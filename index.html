@@ -1,0 +1,211 @@
+<!DOCTYPE html><html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Constelation of Promises</title><style>
+    * {
+        box-sizing: border-box;
+    }
+
+    html, body {
+        margin: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        font-family: Georgia, serif;
+        background: #02030a;
+        color: white;
+    }
+
+    body {
+        position: relative;
+    }
+
+    /* Night sky */
+    #sky {
+        position: fixed;
+        inset: 0;
+        overflow: hidden;
+        background:
+            radial-gradient(circle at 50% 45%, #10152c 0%, #050817 45%, #010208 100%);
+    }
+
+    /* Individual stars */
+    .star {
+        position: absolute;
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: white;
+        box-shadow:
+            0 0 8px 2px rgba(255,255,255,0.9),
+            0 0 20px 5px rgba(150,180,255,0.45);
+        cursor: pointer;
+        animation: twinkle 3s infinite ease-in-out;
+    }
+
+    @keyframes twinkle {
+        0%, 100% {
+            opacity: 0.65;
+            transform: scale(0.85);
+        }
+
+        50% {
+            opacity: 1;
+            transform: scale(1.2);
+        }
+    }
+
+    /* Message area */
+    #message-area {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: min(90%, 500px);
+        text-align: center;
+        z-index: 10;
+    }
+
+    h1 {
+        font-weight: normal;
+        font-size: clamp(24px, 5vw, 42px);
+        letter-spacing: 2px;
+        margin-bottom: 25px;
+        text-shadow: 0 0 20px rgba(255,255,255,0.25);
+    }
+
+    textarea {
+        width: 100%;
+        height: 120px;
+        resize: none;
+        padding: 18px;
+        border-radius: 10px;
+        border: 1px solid rgba(255,255,255,0.2);
+        background: rgba(255,255,255,0.07);
+        backdrop-filter: blur(10px);
+        color: white;
+        font-family: Georgia, serif;
+        font-size: 17px;
+        outline: none;
+    }
+
+    textarea::placeholder {
+        color: rgba(255,255,255,0.45);
+    }
+
+    textarea:focus {
+        border-color: rgba(255,255,255,0.5);
+    }
+
+    button {
+        margin-top: 15px;
+        padding: 11px 30px;
+        border-radius: 30px;
+        border: 1px solid rgba(255,255,255,0.3);
+        background: rgba(255,255,255,0.08);
+        color: white;
+        font-family: Georgia, serif;
+        letter-spacing: 1px;
+        cursor: pointer;
+        transition: 0.3s;
+    }
+
+    button:hover {
+        background: rgba(255,255,255,0.18);
+        box-shadow: 0 0 20px rgba(255,255,255,0.15);
+    }
+
+    /* Promise popup */
+    #promise {
+        display: none;
+        position: fixed;
+        z-index: 20;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        width: min(80%, 450px);
+        padding: 30px;
+        text-align: center;
+        border-radius: 12px;
+        background: rgba(5, 7, 20, 0.85);
+        border: 1px solid rgba(255,255,255,0.2);
+        backdrop-filter: blur(15px);
+        box-shadow: 0 0 40px rgba(0,0,0,0.6);
+    }
+
+    #promise-text {
+        font-size: 20px;
+        line-height: 1.6;
+    }
+
+    #close {
+        margin-top: 20px;
+    }
+</style>
+
+</head><body><div id="sky"></div><div id="message-area">
+    <h1>leave behind a broken promise</h1><textarea id="message" placeholder="write your promise..."></textarea>
+
+<br>
+
+<button id="send">send</button>
+
+</div><div id="promise">
+    <div id="promise-text"></div>
+    <button id="close">close</button>
+</div><script>
+    const sky = document.getElementById("sky");
+    const message = document.getElementById("message");
+    const send = document.getElementById("send");
+    const promise = document.getElementById("promise");
+    const promiseText = document.getElementById("promise-text");
+    const close = document.getElementById("close");
+
+    // Create a few stars so the sky isn't completely empty.
+    for (let i = 0; i < 35; i++) {
+        createStar(
+            Math.random() * 100,
+            Math.random() * 100,
+            null
+        );
+    }
+
+    function createStar(x, y, text) {
+        const star = document.createElement("div");
+
+        star.className = "star";
+        star.style.left = x + "%";
+        star.style.top = y + "%";
+
+        if (text) {
+            star.addEventListener("click", () => {
+                promiseText.textContent = text;
+                promise.style.display = "block";
+            });
+        }
+
+        sky.appendChild(star);
+    }
+
+    send.addEventListener("click", () => {
+        const text = message.value.trim();
+
+        if (!text) {
+            return;
+        }
+
+        // Create the new star somewhere in the sky.
+        const x = 10 + Math.random() * 80;
+        const y = 10 + Math.random() * 80;
+
+        createStar(x, y, text);
+
+        message.value = "";
+    });
+
+    close.addEventListener("click", () => {
+        promise.style.display = "none";
+    });
+</script></body>
+</html>

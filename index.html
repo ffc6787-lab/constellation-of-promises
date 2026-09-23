@@ -43,7 +43,25 @@
         cursor: pointer;
         animation: twinkle 3s infinite ease-in-out;
     }
+.star.flying {
+    animation: flyUp 1.8s ease-out forwards;
+}
 
+@keyframes flyUp {
+    0% {
+        transform: translateY(100px) scale(0.3);
+        opacity: 0;
+    }
+
+    50% {
+        opacity: 1;
+    }
+
+    100% {
+        transform: translateY(0) scale(1);
+        opacity: 1;
+    }
+}
     @keyframes twinkle {
         0%, 100% {
             opacity: 0.65;
@@ -171,13 +189,16 @@
         );
     }
 
-    function createStar(x, y, text) {
+    function createStar(x, y, text, flying) {
         const star = document.createElement("div");
 
         star.className = "star";
         star.style.left = x + "%";
         star.style.top = y + "%";
-
+        
+if (flying) {
+    star.classList.add("flying");
+}
         if (text) {
             star.addEventListener("click", () => {
                 promiseText.textContent = text;
@@ -199,7 +220,7 @@
         const x = 10 + Math.random() * 80;
         const y = 10 + Math.random() * 80;
 
-        createStar(x, y, text);
+        createStar(x, y, text, true);
 
         message.value = "";
     });

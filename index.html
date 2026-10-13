@@ -454,10 +454,11 @@ async function loadPromises() {
         .order("id", { ascending: true });
 
     if (error) {
-    console.error("Loading promises failed:", error);
-    status.textContent = "Database error: " + error.message;
-    return;
-}
+        console.error("Loading promises failed:", error);
+        status.textContent = "Load error: " + error.message;
+        return;
+    }
+
     savedPromises = data || [];
 
     savedPromises.forEach(item => {
@@ -471,7 +472,6 @@ async function loadPromises() {
             ? " promise held in the sky."
             : " promises held in the sky.");
 }
-
 // =====================================
 // 8. SAVE A NEW PROMISE
 // =====================================

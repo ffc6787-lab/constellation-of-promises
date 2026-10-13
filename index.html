@@ -286,8 +286,8 @@ button:disabled { opacity: .5; cursor: wait; }
 // 1. SUPABASE CONNECTION
 // =====================================
 
-const SUPABASE_URL = "YOUR_PROJECT_URL";
-const SUPABASE_KEY = "YOUR_PUBLISHABLE_KEY";
+const SUPABASE_URL = "https://smvpztjgdvqblstnkhrz.supabase.co/rest/v1/";
+const SUPABASE_KEY = "sb_publishable_6wPUxrMIQEl30r6QBbxV2Q_GWEITxfs";
 
 const db = window.supabase.createClient(
     SUPABASE_URL,
@@ -297,13 +297,6 @@ const db = window.supabase.createClient(
 // =====================================
 // 2. PAGE ELEMENTS
 // =====================================
-const SUPABASE_URL = "https://smvpztjgdvqblstnkhrz.supabase.co/rest/v1/";
-const SUPABASE_KEY = "sb_publishable_6wPUxrMIQEl30r6QBbxV2Q_GWEITxfs";
-
-const db = window.supabase.createClient(
-    SUPABASE_URL,
-    SUPABASE_KEY
-);
 
 const sky = document.getElementById("sky");
 const message = document.getElementById("message");

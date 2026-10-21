@@ -898,22 +898,6 @@ function drawConstellations() {
     });
 }
 
-    ctx.shadowBlur = 0;
-
-    // Dim points show where future promises can appear.
-    // Actual promises are rendered as your existing DOM stars.
-    for (let i = 0; i < constellationPoints.length; i++) {
-        if (i < activeCount) continue;
-
-        const point = constellationPoints[i];
-
-        ctx.beginPath();
-        ctx.arc(point.x, point.y, 1.1, 0, Math.PI * 2);
-        ctx.fillStyle = "rgba(190,210,255,0.25)";
-        ctx.fill();
-    }
-}
-
 window.addEventListener("resize", resizeCanvas);
 
 // =====================================
@@ -1116,105 +1100,127 @@ const playlist = [
 
 let currentTrack = -1;
 let musicEnabled = false;
+let fadeFrame = null;
 
-music.volume = 0.20;
-
-function fadeInMusic(duration = 5000) {
-    // Don't restart the fade if music is already playing.
-    if (!music.paused) return;
-
-    musicEnabled = true;
-    music.volume = 0;
-    musicToggle.textContent = "♫ Music on";
-
-    playNextTrack().then(() => {
-        if (music.paused) return;
-
-        const startTime = performance.now();
-        const targetVolume = 0.25;
-
-        function fadeStep(now) {
-            if (!musicEnabled || music.paused) return;
-
-            const progress = Math.min(
-                (now - startTime) / duration,
-                1
-            );
-
-            music.volume = targetVolume * progress;
-
-            if (progress < 1) {
-                requestAnimationFrame(fadeStep);
-            }
-        }
-
-        requestAnimationFrame(fadeStep);
-    });
-}    
+music.volume = 0.2;
 
 function chooseNextTrack() {
-    if (playlist.length <= 1) return 0;
+    if (playlist.length === 1) return 0;
 
-    let nextTrack;
-
+    let next;
     do {
-        nextTrack = Math.floor(Math.random() * playlist.length);
-    } while (nextTrack === currentTrack);
+        next = Math.floor(Math.random() * playlist.length);
+    } while (next === currentTrack);
 
-    return nextTrack;
+    return next;
 }
 
-async function playNextTrack() {
-    if (!musicEnabled) return;
+function stopFade() {
+    if (fadeFrame !== null) {
+        cancelAnimationFrame(fadeFrame);
+        fadeFrame = null;
+    }
+}
+
+function updateMusicButton() {
+    musicToggle.textContent = musicEnabled
+        ? "♫ Music on"
+        : "♫ Music off";
+
+    musicToggle.setAttribute(
+        "aria-label",
+        musicEnabled
+            ? "Turn background music off"
+            : "Turn background music on"
+    );
+}
+
+async function playNextTrack(fade = false) {
+    stopFade();
 
     currentTrack = chooseNextTrack();
-
     music.src = playlist[currentTrack];
+    music.volume = fade ? 0 : 0.2;
     music.load();
 
     try {
         await music.play();
 
-        musicToggle.textContent = "♫ Music on";
-        musicToggle.setAttribute(
-            "aria-label",
-            "Turn background music off"
-        );
+        if (!musicEnabled) {
+            music.pause();
+            return;
+        }
 
+        updateMusicButton();
+        status.textContent = "";
+
+        if (fade) {
+            const start = performance.now();
+            const duration = 5000;
+            const targetVolume = 0.2;
+
+            function fadeStep(now) {
+                if (!musicEnabled || music.paused) {
+                    fadeFrame = null;
+                    return;
+                }
+
+                const progress = Math.min(
+                    (now - start) / duration,
+                    1
+                );
+
+                music.volume = targetVolume * progress;
+
+                if (progress < 1) {
+                    fadeFrame = requestAnimationFrame(fadeStep);
+                } else {
+                    fadeFrame = null;
+                }
+            }
+
+            fadeFrame = requestAnimationFrame(fadeStep);
+        }
     } catch (error) {
         console.error("Music playback failed:", error);
 
-        musicToggle.textContent = "♫ Retry music";
+        musicEnabled = false;
+        updateMusicButton();
 
         status.textContent =
-            error.name === "NotAllowedError"
-                ? "Please tap the music button to start playback."
-                : "Music couldn't load. Check the audio file paths.";
-
-        musicEnabled = false;
+            "Music couldn't play. Check the audio file paths and try again.";
     }
+}
+
+async function fadeInMusic() {
+    // Don't restart music that's already playing.
+    if (!music.paused) return;
+
+    musicEnabled = true;
+    await playNextTrack(true);
 }
 
 music.addEventListener("ended", () => {
     if (musicEnabled) {
-        playNextTrack();
+        playNextTrack(false);
     }
 });
 
 musicToggle.addEventListener("click", async () => {
     if (musicEnabled) {
         musicEnabled = false;
+        stopFade();
         music.pause();
-
-        musicToggle.textContent = "♫ Music off";
-        musicToggle.setAttribute(
-            "aria-label",
-            "Turn background music on"
-        );
-    } else {
-        musicEnabled = true;
-        await playNextTrack();
+        updateMusicButton();
+        return;
     }
+
+    musicEnabled = true;
+    updateMusicButton();
+
+    // Start directly from the click so browsers can
+    // recognize the visitor's playback permission.
+    await playNextTrack(false);
 });
 resizeCanvas();
 loadPromises();

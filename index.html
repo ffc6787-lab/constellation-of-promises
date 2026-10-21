@@ -329,7 +329,80 @@ button:disabled { opacity: .5; cursor: wait; }
         width: 88%;
     }
 }    
+const music = document.getElementById("background-music");
+const musicToggle = document.getElementById("music-toggle");
+
+// Replace these example filenames with your actual MP3 filenames.
+const playlist = [
+    "musicword-in-dream-229999.mp3",
+    "drmseq-lost-in-purple-light-593136.mp3.mp3",
     
+];
+
+let currentTrack = -1;
+let musicEnabled = false;
+
+music.volume = 0.25;
+
+// Pick a random track without immediately repeating the last one.
+function chooseNextTrack() {
+    if (playlist.length <= 1) return 0;
+
+    let nextTrack;
+
+    do {
+        nextTrack = Math.floor(Math.random() * playlist.length);
+    } while (nextTrack === currentTrack);
+
+    return nextTrack;
+}
+
+// Play the next track in the playlist.
+async function playNextTrack() {
+    if (!musicEnabled) return;
+
+    currentTrack = chooseNextTrack();
+    music.src = playlist[currentTrack];
+    music.load();
+
+    try {
+        await music.play();
+
+        musicToggle.textContent = "♫ Music on";
+        musicToggle.setAttribute(
+            "aria-label",
+            "Turn background music off"
+        );
+    } catch (error) {
+        console.error("Music playback failed:", error);
+        musicToggle.textContent = "♫ Tap to play";
+    }
+}
+
+// Automatically move to another track when the current one ends.
+music.addEventListener("ended", () => {
+    if (musicEnabled) {
+        playNextTrack();
+    }
+});
+
+// Music on/off toggle.
+musicToggle.addEventListener("click", async () => {
+    if (musicEnabled) {
+        musicEnabled = false;
+        music.pause();
+
+        musicToggle.textContent = "♫ Music off";
+        musicToggle.setAttribute(
+            "aria-label",
+            "Turn background music on"
+        );
+    } else {
+        musicEnabled = true;
+        await playNextTrack();
+    }
+});
+        
 </style>
 </head>
 

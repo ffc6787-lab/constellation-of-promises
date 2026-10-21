@@ -29,7 +29,11 @@ html, body {
         #010208 100%
     );
 }
-
+/* Gentle, smooth movement */
+    transition: transform 0.8s ease-out;
+    will-change: transform;
+}
+    
 #constellation-canvas {
     position: absolute;
     inset: 0;
@@ -1068,6 +1072,32 @@ musicToggle.addEventListener("click", async () => {
 });
 resizeCanvas();
 loadPromises();
+   /* =====================================
+   11. GENTLE SKY PARALLAX
+===================================== */
+
+const prefersReducedMotion = window.matchMedia(
+    "(prefers-reduced-motion: reduce)"
+);
+
+if (!prefersReducedMotion.matches) {
+    const skyMovement = 10; // Maximum movement in pixels
+
+    document.addEventListener("mousemove", (event) => {
+        const x = (event.clientX / window.innerWidth) - 0.5;
+        const y = (event.clientY / window.innerHeight) - 0.5;
+
+        const moveX = -x * skyMovement * 2;
+        const moveY = -y * skyMovement * 2;
+
+        sky.style.transform =
+            `translate(${moveX}px, ${moveY}px)`;
+    });
+
+    document.addEventListener("mouseleave", () => {
+        sky.style.transform = "translate(0, 0)";
+    });
+} 
 </script>
 
 </body>

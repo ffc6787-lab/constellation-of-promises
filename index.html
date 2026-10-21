@@ -456,28 +456,36 @@ button:disabled { opacity: .5; cursor: wait; }
     <p id="status" role="status" aria-live="polite"></p>
 </div>
 
+
+<!-- Window that displays a saved promise -->
 <div id="promise" role="dialog" aria-modal="true">
-    <!-- Confirmation window before saving a promise -->
-<div id="confirm-dialog" role="dialog"
+    <div id="promise-text"></div>
+    <button id="close">close</button>
+</div>
+
+<!-- Confirmation window before saving a promise -->
+<div id="confirm-dialog"
+     role="dialog"
      aria-modal="true"
      aria-labelledby="confirm-heading"
      style="display: none;">
 
     <h2 id="confirm-heading">Is this your promise?</h2>
-
     <p id="confirm-text"></p>
 
     <div class="confirm-actions">
         <button id="confirm-submit">Yes, send it into the sky</button>
-        <button id="confirm-cancel">Let me edit it</button>
+        <button id="confirm-cancel">Edit it more</button>
     </div>
 </div>
 
-<!-- Button to return to writing -->
-<button id="return-to-writing" type="button"
+<!-- Return-to-writing button -->
+<button id="return-to-writing"
+        type="button"
         style="display: none;">
     Write another unfinished promise
 </button>
+
     <div id="promise-text"></div>
     <button id="close">close</button>
 </div>
@@ -625,6 +633,7 @@ function dissolveInterface(targetX, targetY) {
     area.style.display = "none";
     returnToWriting.style.display = "block";
 }, { once: true });
+}
     
 // =====================================
 // 6. CONSTELLATION CANVAS

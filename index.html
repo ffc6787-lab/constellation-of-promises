@@ -857,10 +857,13 @@ async function savePromise() {
 
         if (error) throw error;
 
-        savedPromises.push(data);
+       savedPromises.push(data);
 
-        createStar(data.x, data.y, data.message, true);
-        createSparkles(data.x, data.y);
+createStar(data.x, data.y, data.message, true);
+createSparkles(data.x, data.y);
+
+// Let the music emerge as the promise enters the sky.
+fadeInMusic(5000);
 
         message.value = "";
         pendingPromise = "";
@@ -964,7 +967,40 @@ const playlist = [
 let currentTrack = -1;
 let musicEnabled = false;
 
-music.volume = 0.25;
+music.volume = 0.20;
+
+function fadeInMusic(duration = 5000) {
+    // Don't restart the fade if music is already playing.
+    if (!music.paused) return;
+
+    musicEnabled = true;
+    music.volume = 0;
+    musicToggle.textContent = "♫ Music on";
+
+    playNextTrack().then(() => {
+        if (music.paused) return;
+
+        const startTime = performance.now();
+        const targetVolume = 0.25;
+
+        function fadeStep(now) {
+            if (!musicEnabled || music.paused) return;
+
+            const progress = Math.min(
+                (now - startTime) / duration,
+                1
+            );
+
+            music.volume = targetVolume * progress;
+
+            if (progress < 1) {
+                requestAnimationFrame(fadeStep);
+            }
+        }
+
+        requestAnimationFrame(fadeStep);
+    });
+}    
 
 function chooseNextTrack() {
     if (playlist.length <= 1) return 0;

@@ -345,7 +345,88 @@ button:disabled { opacity: .5; cursor: wait; }
     font-size: 13px;
     cursor: pointer;
 }
-        
+    /* Promise confirmation window */
+#confirm-dialog {
+    position: fixed;
+    z-index: 25;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: min(88%, 440px);
+    max-height: 85vh;
+    overflow-y: auto;
+    padding: 28px;
+    text-align: center;
+    border-radius: 14px;
+    background: rgba(5, 7, 20, .96);
+    border: 1px solid rgba(255, 255, 255, .22);
+    backdrop-filter: blur(15px);
+    box-shadow: 0 0 45px rgba(0, 0, 0, .6);
+}
+
+#confirm-heading {
+    font-weight: normal;
+    font-size: 24px;
+    line-height: 1.4;
+}
+
+#confirm-text {
+    font-size: 17px;
+    line-height: 1.7;
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
+    color: rgba(235, 240, 255, .9);
+    margin: 20px 0;
+}
+
+.confirm-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+
+.confirm-actions button {
+    max-width: 100%;
+    margin-top: 5px;
+}
+
+/* Return to writing from the open sky */
+#return-to-writing {
+    position: fixed;
+    z-index: 30;
+    left: 20px;
+    bottom: 20px;
+    margin: 0;
+    padding: 12px 18px;
+    max-width: calc(100% - 40px);
+    background: rgba(5, 7, 20, .88);
+    border: 1px solid rgba(255, 255, 255, .3);
+    border-radius: 30px;
+    color: white;
+    font-family: Georgia, serif;
+    font-size: 13px;
+    letter-spacing: .4px;
+    backdrop-filter: blur(10px);
+}
+
+#return-to-writing:hover {
+    background: rgba(255, 255, 255, .18);
+}
+
+@media (max-width: 480px) {
+    #return-to-writing {
+        left: 10px;
+        bottom: 10px;
+        max-width: calc(100% - 20px);
+        font-size: 12px;
+    }
+
+    #music-toggle {
+        right: 10px;
+        bottom: 10px;
+    }
+}    
 </style>
 </head>
 
@@ -363,7 +444,7 @@ button:disabled { opacity: .5; cursor: wait; }
 </div>
 
 <div id="message-area">
-    <h1>Write your Unfinished Promise</h1>
+    <h1>Write Your Unfinished Promise</h1>
     <textarea
         id="message"
         maxlength="500"
@@ -376,6 +457,27 @@ button:disabled { opacity: .5; cursor: wait; }
 </div>
 
 <div id="promise" role="dialog" aria-modal="true">
+    <!-- Confirmation window before saving a promise -->
+<div id="confirm-dialog" role="dialog"
+     aria-modal="true"
+     aria-labelledby="confirm-heading"
+     style="display: none;">
+
+    <h2 id="confirm-heading">Is this your promise?</h2>
+
+    <p id="confirm-text"></p>
+
+    <div class="confirm-actions">
+        <button id="confirm-submit">Yes, send it into the sky</button>
+        <button id="confirm-cancel">Let me edit it</button>
+    </div>
+</div>
+
+<!-- Button to return to writing -->
+<button id="return-to-writing" type="button"
+        style="display: none;">
+    Write another unfinished promise
+</button>
     <div id="promise-text"></div>
     <button id="close">close</button>
 </div>
@@ -519,10 +621,10 @@ function dissolveInterface(targetX, targetY) {
     area.classList.add("dissolving");
 
     // Let the visitor explore the sky without the form.
-    area.addEventListener("animationend", () => {
-        area.style.display = "none";
-    }, { once: true });
-}
+   area.addEventListener("animationend", () => {
+    area.style.display = "none";
+    returnToWriting.style.display = "block";
+}, { once: true });
     
 // =====================================
 // 6. CONSTELLATION CANVAS
@@ -696,22 +798,45 @@ async function loadPromises() {
             ? " promise held in the sky."
             : " promises held in the sky.");
 }
-// =====================================
-// 8. SAVE A NEW PROMISE
-// =====================================
+/* =====================================
+   8. CONFIRM AND SAVE A PROMISE
+===================================== */
 
-async function sendPromise() {
+const confirmDialog = document.getElementById("confirm-dialog");
+const confirmText = document.getElementById("confirm-text");
+const confirmSubmit = document.getElementById("confirm-submit");
+const confirmCancel = document.getElementById("confirm-cancel");
+const returnToWriting = document.getElementById("return-to-writing");
+
+let pendingPromise = "";
+
+// Step 1: Ask the visitor to confirm their promise.
+function sendPromise() {
     const text = message.value.trim();
 
     if (!text) {
         status.textContent = "Write a promise before sending it.";
+        message.focus();
         return;
     }
 
-    // Avoid submitting twice while the request is in progress.
     if (send.disabled) return;
 
+    pendingPromise = text;
+    confirmText.textContent = pendingPromise;
+    confirmDialog.style.display = "block";
+    confirmSubmit.focus();
+}
+
+// Step 2: Save only after confirmation.
+async function savePromise() {
+    if (!pendingPromise || send.disabled) return;
+
+    const text = pendingPromise;
+
     send.disabled = true;
+    confirmSubmit.disabled = true;
+    confirmDialog.style.display = "none";
     status.textContent = "Sending your promise into the sky...";
 
     const x = 10 + Math.random() * 80;
@@ -726,18 +851,15 @@ async function sendPromise() {
 
         if (error) throw error;
 
-        // Keep the saved promise in the local collection.
         savedPromises.push(data);
 
-        // Create the visitor's new shooting star.
         createStar(data.x, data.y, data.message, true);
         createSparkles(data.x, data.y);
 
-        // Clear the input and update the constellation.
         message.value = "";
-        drawConstellations();
+        pendingPromise = "";
 
-        // Dissolve the interface into the new star.
+        drawConstellations();
         dissolveInterface(data.x, data.y);
 
         status.textContent =
@@ -749,20 +871,62 @@ async function sendPromise() {
         status.textContent =
             "Your promise couldn't be saved. Please try again.";
 
+        // Keep the text so the visitor can retry.
+        message.value = text;
+
     } finally {
         send.disabled = false;
+        confirmSubmit.disabled = false;
     }
 }
 
-// The button and Enter key use the same submission function.
+// Confirm the promise.
+confirmSubmit.addEventListener("click", savePromise);
+
+// Return to editing without saving.
+confirmCancel.addEventListener("click", () => {
+    confirmDialog.style.display = "none";
+    message.focus();
+});
+
+// Enter opens the confirmation window.
 send.addEventListener("click", sendPromise);
 
-// Enter submits; Shift + Enter keeps the normal textarea behavior.
 message.addEventListener("keydown", event => {
-    if (event.key === "Enter" && !event.shiftKey && !event.isComposing) {
+    if (
+        event.key === "Enter" &&
+        !event.shiftKey &&
+        !event.isComposing
+    ) {
         event.preventDefault();
         sendPromise();
     }
+});
+
+// Escape closes the confirmation window without saving.
+document.addEventListener("keydown", event => {
+    if (
+        event.key === "Escape" &&
+        confirmDialog.style.display === "block"
+    ) {
+        confirmDialog.style.display = "none";
+        message.focus();
+    }
+});
+
+// Return to the writing interface from the sky.
+returnToWriting.addEventListener("click", () => {
+    const area = document.getElementById("message-area");
+
+    area.classList.remove("dissolving");
+    area.style.display = "block";
+    area.style.visibility = "visible";
+    area.style.opacity = "1";
+    area.style.filter = "none";
+
+    returnToWriting.style.display = "none";
+    status.textContent = "";
+    message.focus();
 });
 
 // =====================================

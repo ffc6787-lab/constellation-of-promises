@@ -252,6 +252,84 @@ button:disabled { opacity: .5; cursor: wait; }
         animation-duration: .01ms !important;
     }
 }
+
+/* The writing interface dissolves into the sky */
+#message-area {
+    transition: none;
+    transform-origin: center center;
+}
+
+#message-area.dissolving {
+    animation: interfaceDissolve 1.2s ease-in forwards;
+    pointer-events: none;
+}
+
+@keyframes interfaceDissolve {
+    0% {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1);
+        filter: blur(0);
+    }
+    45% {
+        opacity: 0.7;
+        transform: translate(-50%, -50%) scale(0.97);
+        filter: blur(2px);
+    }
+    100% {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(0.88);
+        filter: blur(12px);
+        visibility: hidden;
+    }
+}
+
+/* Particles that carry the interface into a star */
+.dissolve-particle {
+    position: absolute;
+    width: 3px;
+    height: 3px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow:
+        0 0 6px 2px rgba(190, 215, 255, 0.9),
+        0 0 14px rgba(130, 170, 255, 0.7);
+    pointer-events: none;
+    z-index: 12;
+    animation: dissolveToStar 1.2s ease-in forwards;
+}
+
+@keyframes dissolveToStar {
+    0% {
+        opacity: 0;
+        transform: translate(0, 0) scale(0.4);
+    }
+    20% {
+        opacity: 1;
+        transform: translate(
+            calc(var(--dx) * 0.15),
+            calc(var(--dy) * 0.15)
+        ) scale(1.3);
+    }
+    75% {
+        opacity: 0.9;
+        transform: translate(
+            calc(var(--dx) * 0.8),
+            calc(var(--dy) * 0.8)
+        ) scale(0.8);
+    }
+    100% {
+        opacity: 0;
+        transform: translate(var(--dx), var(--dy)) scale(0);
+    }
+}
+
+/* Keep the page usable on smaller screens */
+@media (max-width: 600px) {
+    #message-area {
+        width: 88%;
+    }
+}    
+    
 </style>
 </head>
 
@@ -375,7 +453,54 @@ function createSparkles(x, y) {
         sparkle.addEventListener("animationend", () => sparkle.remove());
     }
 }
+function dissolveInterface(targetX, targetY) {
+    const area = document.getElementById("message-area");
+    const rect = area.getBoundingClientRect();
+    const skyRect = sky.getBoundingClientRect();
 
+    // Convert the star's percentage position into pixels.
+    const targetLeft =
+        skyRect.left + (targetX / 100) * skyRect.width;
+    const targetTop =
+        skyRect.top + (targetY / 100) * skyRect.height;
+
+    // Scatter particles throughout the writing interface.
+    for (let i = 0; i < 55; i++) {
+        const particle = document.createElement("div");
+        particle.className = "dissolve-particle";
+
+        const startX = rect.left + Math.random() * rect.width;
+        const startY = rect.top + Math.random() * rect.height;
+
+        particle.style.left = (startX - skyRect.left) + "px";
+        particle.style.top = (startY - skyRect.top) + "px";
+
+        particle.style.setProperty(
+            "--dx",
+            (targetLeft - startX) + "px"
+        );
+
+        particle.style.setProperty(
+            "--dy",
+            (targetTop - startY) + "px"
+        );
+
+        sky.appendChild(particle);
+
+        particle.addEventListener("animationend", () => {
+            particle.remove();
+        }, { once: true });
+    }
+
+    // Dissolve the title, text box, and button together.
+    area.classList.add("dissolving");
+
+    // Let the visitor explore the sky without the form.
+    area.addEventListener("animationend", () => {
+        area.style.display = "none";
+    }, { once: true });
+}
+    
 // =====================================
 // 6. CONSTELLATION CANVAS
 // =====================================
@@ -476,15 +601,16 @@ async function loadPromises() {
 // 8. SAVE A NEW PROMISE
 // =====================================
 
-send.addEventListener("click", async () => {
-console.log("SEND BUTTON CLICKED");
-    
+async function sendPromise() {
     const text = message.value.trim();
 
     if (!text) {
         status.textContent = "Write a promise before sending it.";
         return;
     }
+
+    // Avoid submitting twice while the request is in progress.
+    if (send.disabled) return;
 
     send.disabled = true;
     status.textContent = "Sending your promise into the sky...";
@@ -501,22 +627,42 @@ console.log("SEND BUTTON CLICKED");
 
         if (error) throw error;
 
+        // Keep the saved promise in the local collection.
         savedPromises.push(data);
 
+        // Create the visitor's new shooting star.
         createStar(data.x, data.y, data.message, true);
         createSparkles(data.x, data.y);
 
+        // Clear the input and update the constellation.
         message.value = "";
         drawConstellations();
 
+        // Dissolve the interface into the new star.
+        dissolveInterface(data.x, data.y);
+
         status.textContent =
             "Your promise has found its place in the sky.";
+
     } catch (error) {
         console.error("Saving promise failed:", error);
+
         status.textContent =
             "Your promise couldn't be saved. Please try again.";
+
     } finally {
         send.disabled = false;
+    }
+}
+
+// The button and Enter key use the same submission function.
+send.addEventListener("click", sendPromise);
+
+// Enter submits; Shift + Enter keeps the normal textarea behavior.
+message.addEventListener("keydown", event => {
+    if (event.key === "Enter" && !event.shiftKey && !event.isComposing) {
+        event.preventDefault();
+        sendPromise();
     }
 });
 

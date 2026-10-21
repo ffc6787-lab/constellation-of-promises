@@ -486,9 +486,6 @@ button:disabled { opacity: .5; cursor: wait; }
     Write another unfinished promise
 </button>
 
-    <div id="promise-text"></div>
-    <button id="close">close</button>
-</div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
@@ -960,7 +957,7 @@ const musicToggle = document.getElementById("music-toggle");
 
 const playlist = [
     "musicword-in-dream-229999.mp3",
-    "drmseq-lost-in-purple-light-593136.mp3.mp3"
+    "drmseq-lost-in-purple-light-593136.mp3.mp3",
     "aksfx - Big Walk Theme (Jumping Voices).mp3"
 ];
 
@@ -997,9 +994,18 @@ async function playNextTrack() {
             "aria-label",
             "Turn background music off"
         );
+
     } catch (error) {
         console.error("Music playback failed:", error);
-        musicToggle.textContent = "♫ Tap to play";
+
+        musicToggle.textContent = "♫ Retry music";
+
+        status.textContent =
+            error.name === "NotAllowedError"
+                ? "Please tap the music button to start playback."
+                : "Music couldn't load. Check the audio file paths.";
+
+        musicEnabled = false;
     }
 }
 

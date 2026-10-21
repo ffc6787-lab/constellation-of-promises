@@ -523,6 +523,128 @@ const ctx = canvas.getContext("2d");
 let savedPromises = [];
 
 // =====================================
+// CONSTELLATION LETTER LAYOUT
+// Insert below: let savedPromises = [];
+// =====================================
+
+const constellationPoints = [];
+
+function buildConstellationPoints() {
+    const width = sky.clientWidth;
+    const height = sky.clientHeight;
+
+    constellationPoints.length = 0;
+
+    if (!width || !height) return;
+
+    // Draw the phrase onto an invisible canvas so we can
+    // find points along the outlines of its letters.
+    const template = document.createElement("canvas");
+    template.width = width;
+    template.height = height;
+
+    const tctx = template.getContext("2d");
+
+    tctx.fillStyle = "#ffffff";
+    tctx.textAlign = "center";
+    tctx.textBaseline = "middle";
+
+    const lines = [
+        { text: "UNFINISHED", y: height * 0.41 },
+        { text: "PROMISES", y: height * 0.60 }
+    ];
+
+    // Find a font size that fits both lines.
+    tctx.font = "bold 100px Georgia, serif";
+
+    const widestLine = Math.max(
+        ...lines.map(line => tctx.measureText(line.text).width)
+    );
+
+    const fontSize = Math.min(
+        100,
+        (width * 0.90 / widestLine) * 100,
+        height * 0.13
+    );
+
+    tctx.font = `bold ${fontSize}px Georgia, serif`;
+
+    lines.forEach(line => {
+    tctx.fillText(line.text, width / 2, line.y);
+});
+
+    const pixels = tctx.getImageData(
+        0, 0, width, height
+    ).data;
+
+    function alphaAt(x, y) {
+        if (
+            x < 0 || y < 0 ||
+            x >= width || y >= height
+        ) return 0;
+
+        return pixels[(y * width + x) * 4 + 3];
+    }
+
+    // Sample the letter outlines at regular intervals.
+    // This creates a constellation rather than solid text.
+    const spacing = Math.max(
+        5,
+        Math.min(8, Math.round(width / 100))
+    );
+
+    for (let y = 2; y < height - 2; y += spacing) {
+        for (let x = 2; x < width - 2; x += spacing) {
+            if (alphaAt(x, y) < 40) continue;
+
+            const isEdge =
+                alphaAt(x - 3, y) < 40 ||
+                alphaAt(x + 3, y) < 40 ||
+                alphaAt(x, y - 3) < 40 ||
+                alphaAt(x, y + 3) < 40;
+
+            if (isEdge) {
+                constellationPoints.push({ x, y });
+            }
+        }
+    }
+
+    // Stable ordering means the same saved promise always
+    // occupies the same point at a given screen size.
+    constellationPoints.sort((a, b) =>
+        a.y - b.y || a.x - b.x
+    );
+}
+
+function getConstellationPosition(index) {
+    const point = constellationPoints[index];
+
+    if (!point) {
+        // Fallback if the phrase has fewer points than promises.
+        return {
+            x: 5 + (index * 7) % 90,
+            y: 15 + (index * 11) % 70
+        };
+    }
+
+    return {
+        x: point.x / sky.clientWidth * 100,
+        y: point.y / sky.clientHeight * 100
+    };
+}
+
+function updatePromiseStarPositions() {
+    const stars = sky.querySelectorAll(".star.promise-star");
+
+    stars.forEach((star, index) => {
+        const point = getConstellationPosition(index);
+
+        star.style.left = point.x + "%";
+        star.style.top = point.y + "%";
+    });
+}    
+
+// =====================================
 // 3. DECORATIVE BACKGROUND STARS
 // =====================================
 
@@ -651,7 +773,10 @@ function resizeCanvas() {
     canvas.style.height = height + "px";
 
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    drawConstellations();
+
+buildConstellationPoints();
+updatePromiseStarPositions();
+drawConstellations();
 }
 
 function drawConstellations() {
@@ -660,118 +785,60 @@ function drawConstellations() {
 
     ctx.clearRect(0, 0, width, height);
 
-    const stars = [...savedPromises].sort(
-        (a, b) => Number(a.id) - Number(b.id)
+    const activeCount = Math.min(
+        savedPromises.length,
+        constellationPoints.length
     );
 
-    const GROUP_SIZE = 7;
+    // Draw every possible connection between nearby
+    // outline points, so the letters remain recognizable.
+    for (let i = 0; i < constellationPoints.length; i++) {
+        const a = constellationPoints[i];
 
-    if (stars.length < GROUP_SIZE) return;
+        for (let j = i + 1; j < constellationPoints.length; j++) {
+            const b = constellationPoints[j];
 
-    // Seven-star patterns designed to reduce line crossings.
-    const patterns = [
-        [0, 1, 2, 3, 4, 5, 6, 0],
-        [0, 2, 4, 6, 5, 3, 1, 0],
-        [0, 1, 3, 5, 6, 4, 2, 0],
-        [0, 2, 1, 3, 5, 4, 6, 0]
-    ];
+            const dx = b.x - a.x;
+            const dy = b.y - a.y;
+            const distance = Math.hypot(dx, dy);
 
-    // Count proper intersections between two line segments.
-    function segmentsCross(a, b, c, d) {
-        function orientation(p, q, r) {
-            return (q.x - p.x) * (r.y - p.y) -
-                   (q.y - p.y) * (r.x - p.x);
+            // Connect neighboring points, not distant letters.
+            if (distance > 9) continue;
+
+            const isIlluminated =
+                i < activeCount && j < activeCount;
+
+            ctx.beginPath();
+            ctx.moveTo(a.x, a.y);
+            ctx.lineTo(b.x, b.y);
+
+            ctx.strokeStyle = isIlluminated
+                ? "rgba(175,205,255,0.75)"
+                : "rgba(145,175,255,0.12)";
+
+            ctx.lineWidth = isIlluminated ? 1.2 : 0.7;
+            ctx.shadowColor = isIlluminated
+                ? "rgba(130,180,255,0.65)"
+                : "transparent";
+
+            ctx.shadowBlur = isIlluminated ? 5 : 0;
+            ctx.stroke();
         }
-
-        const o1 = orientation(a, b, c);
-        const o2 = orientation(a, b, d);
-        const o3 = orientation(c, d, a);
-        const o4 = orientation(c, d, b);
-
-        return o1 * o2 < 0 && o3 * o4 < 0;
     }
 
-    // Select the pattern with the fewest crossing lines.
-    function choosePattern(group) {
-        const points = group.map(item => ({
-            x: item.x / 100 * width,
-            y: item.y / 100 * height
-        }));
+    ctx.shadowBlur = 0;
 
-        let bestPattern = patterns[0];
-        let fewestCrossings = Infinity;
+    // Dim points show where future promises can appear.
+    // Actual promises are rendered as your existing DOM stars.
+    for (let i = 0; i < constellationPoints.length; i++) {
+        if (i < activeCount) continue;
 
-        for (const pattern of patterns) {
-            const edges = [];
-
-            for (let i = 0; i < pattern.length - 1; i++) {
-                edges.push([
-                    points[pattern[i]],
-                    points[pattern[i + 1]]
-                ]);
-            }
-
-            let crossings = 0;
-
-            for (let i = 0; i < edges.length; i++) {
-                for (let j = i + 1; j < edges.length; j++) {
-                    // Adjacent lines share a star, so ignore them.
-                    if (
-                        edges[i][0] === edges[j][0] ||
-                        edges[i][0] === edges[j][1] ||
-                        edges[i][1] === edges[j][0] ||
-                        edges[i][1] === edges[j][1]
-                    ) continue;
-
-                    if (segmentsCross(
-                        edges[i][0],
-                        edges[i][1],
-                        edges[j][0],
-                        edges[j][1]
-                    )) {
-                        crossings++;
-                    }
-                }
-            }
-
-            if (crossings < fewestCrossings) {
-                fewestCrossings = crossings;
-                bestPattern = pattern;
-            }
-        }
-
-        return bestPattern;
-    }
-
-    // Draw each seven-star constellation separately.
-    for (
-        let start = 0;
-        start + GROUP_SIZE <= stars.length;
-        start += GROUP_SIZE
-    ) {
-        const group = stars.slice(start, start + GROUP_SIZE);
-        const pattern = choosePattern(group);
+        const point = constellationPoints[i];
 
         ctx.beginPath();
-
-        pattern.forEach((index, i) => {
-            const item = group[index];
-            const px = item.x / 100 * width;
-            const py = item.y / 100 * height;
-
-            if (i === 0) {
-                ctx.moveTo(px, py);
-            } else {
-                ctx.lineTo(px, py);
-            }
-        });
-
-        ctx.strokeStyle = "rgba(165,195,255,.32)";
-        ctx.lineWidth = 1;
-        ctx.shadowColor = "rgba(130,170,255,.3)";
-        ctx.shadowBlur = 4;
-        ctx.stroke();
-        ctx.shadowBlur = 0;
+        ctx.arc(point.x, point.y, 1.1, 0, Math.PI * 2);
+        ctx.fillStyle = "rgba(190,210,255,0.25)";
+        ctx.fill();
     }
 }
 
@@ -797,9 +864,11 @@ async function loadPromises() {
 
     savedPromises = data || [];
 
-    savedPromises.forEach(item => {
-        createStar(item.x, item.y, item.message);
-    });
+    savedPromises.forEach((item, index) => {
+    const point = getConstellationPosition(index);
+
+    createStar(point.x, point.y, item.message);
+});
 
     drawConstellations();
 
@@ -849,8 +918,12 @@ async function savePromise() {
     confirmDialog.style.display = "none";
     status.textContent = "Sending your promise into the sky...";
 
-    const x = 10 + Math.random() * 80;
-    const y = 10 + Math.random() * 80;
+    const nextPoint = getConstellationPosition(
+    savedPromises.length
+);
+
+const x = nextPoint.x;
+const y = nextPoint.y;
 
     try {
         const { data, error } = await db
